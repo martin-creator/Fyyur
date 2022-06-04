@@ -122,7 +122,7 @@ def venues():
       "state": result.state
     }
 
-    venues. = Venue.query.filter_by(city=result.city, state=result.state).all()
+    venues = Venue.query.filter_by(city=result.city, state=result.state).all()
 
     #format each venue
     formatted_venues = []
@@ -135,8 +135,9 @@ def venues():
 
     city_state_unit["venues"] = formatted_venues
     data.append(city_state_unit)
-  return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
-    
+  
+  return render_template('pages/venues.html', areas=data);
+  
   # TODO: replace with real venues data.
   # num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
   #return render_template('pages/venues.html', areas=data);
@@ -307,8 +308,8 @@ def artists():
 def search_artists():
   search_term  = request.form.get('search_term', '')
   artists = Artist.query.filter(
-    Artist.name.ilike(f"%{search_term}%")
-    Artist.city.ilike(f"%{search_term}%")
+    Artist.name.ilike(f"%{search_term}%") |
+    Artist.city.ilike(f"%{search_term}%") |
     Artist.state.ilike(f"%{search_term}%")
   ).all()
 
@@ -454,7 +455,7 @@ def edit_venue_submission(venue_id):
 
    form = VenueForm()
 
-  if form.validate():
+   if form.validate():
     try:
       venue = Venue.query.get(venue_id)
 
@@ -483,11 +484,11 @@ def edit_venue_submission(venue_id):
     finally:
       db.session.close()
 
-  else:
+   else:
     print("\n\n", form.errors)
     flash('An error occurred. Venue ' + request.form['name'] + ' could not be updated.')
 
-  return redirect(url_for('show_venue', venue_id=venue_id))
+   return redirect(url_for('show_venue', venue_id=venue_id))
 
   #return render_template('forms/edit_venue.html', form=form)
   # TODO: take values from the form submitted, and update existing
@@ -525,12 +526,12 @@ def create_artist_submission():
       db.session.commit()
       flash('Artist ' + request.form['name'] + ' was successfully listed!')
 
-      except Exception:
+    except Exception:
         db.session.rollback()
         flash('An error occurred. Artist ' + request.form['name'] + ' could not be listed.')
         print(sys.exc_info())
 
-      finally:
+    finally:
         db.session.close()
 
   else:
