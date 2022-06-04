@@ -242,6 +242,40 @@ def create_venue_form():
 
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
+  form = VenueForm()
+  
+  if form.validate():
+    try:
+        new_venue = Venue(
+          name = form.name.data,
+          city = form.city.data,
+          state = form.state.data,
+          address = form.address.data,
+          phone = form.phone.data,
+          genres = ",".join(form.genres.data),#This coverts array to string with commas
+          facebook_link = form.facebook_link.data,
+          image_link = form.image_link.data,
+          seeking_talent = form.seeking_talent.data,
+          seeking_description = form.seeking_description.data,
+          website = form.website.data
+        )
+
+        db.session.add(new_venue) # Managing database transactions 
+        db.session.commit()
+        flash('Venue ' + request.form['name' + 'was successfully created and stored!'])
+   except Exception:
+     db.session.rollback()
+     print(sys.exc_info())
+     flash('An error occured. Your Venue' + 'Could not be added to our database')
+
+    finally:
+      db.session.close() 
+
+  else:
+    print("\n\n", form.errors)
+    flash('An error accurred while trying to create your venue! ')
+
+  return redirect(url_for("index")) # This redirects the user back to the home page
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
 
