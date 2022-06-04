@@ -14,3 +14,5 @@ SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:147852@localhost:5432/fyyur'
 
 #Track object modifications
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+

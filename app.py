@@ -10,7 +10,7 @@ from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging import Formatter, FileHandler
-from flask_wtf import Form
+from flask_wtf import Form, CsrfProtect
 from forms import *
 from flask_migrate import Migrate
 #----------------------------------------------------------------------------#
@@ -22,6 +22,8 @@ moment = Moment(app)
 app.config.from_object('config')
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+csrf = CsrfProtect(app)
+csrf.init_app(app) # Fixing the bug of csrf token not found
 
 # TODO: connect to a local postgresql database
 
@@ -263,7 +265,7 @@ def create_venue_submission():
         db.session.add(new_venue) # Managing database transactions 
         db.session.commit()
         flash('Venue ' + request.form['name' + 'was successfully created and stored!'])
-   except Exception:
+    except Exception:
      db.session.rollback()
      print(sys.exc_info())
      flash('An error occured. Your Venue' + 'Could not be added to our database')
@@ -487,42 +489,20 @@ def create_artist_submission():
 def shows():
   # displays list of shows at /shows
   # TODO: replace with real venues data.
-  data=[{
-    "venue_id": 1,
-    "venue_name": "The Musical Hop",
-    "artist_id": 4,
-    "artist_name": "Guns N Petals",
-    "artist_image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
-    "start_time": "2019-05-21T21:30:00.000Z"
-  }, {
-    "venue_id": 3,
-    "venue_name": "Park Square Live Music & Coffee",
-    "artist_id": 5,
-    "artist_name": "Matt Quevedo",
-    "artist_image_link": "https://images.unsplash.com/photo-1495223153807-b916f75de8c5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=334&q=80",
-    "start_time": "2019-06-15T23:00:00.000Z"
-  }, {
-    "venue_id": 3,
-    "venue_name": "Park Square Live Music & Coffee",
-    "artist_id": 6,
-    "artist_name": "The Wild Sax Band",
-    "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-    "start_time": "2035-04-01T20:00:00.000Z"
-  }, {
-    "venue_id": 3,
-    "venue_name": "Park Square Live Music & Coffee",
-    "artist_id": 6,
-    "artist_name": "The Wild Sax Band",
-    "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-    "start_time": "2035-04-08T20:00:00.000Z"
-  }, {
-    "venue_id": 3,
-    "venue_name": "Park Square Live Music & Coffee",
-    "artist_id": 6,
-    "artist_name": "The Wild Sax Band",
-    "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-    "start_time": "2035-04-15T20:00:00.000Z"
-  }]
+  data = []
+
+  shows = Show.query.all()
+  for show in shows:
+    temp = {}
+    temp['venue_id'] = show.venue_id
+    temp['venue_name'] = show.venue.name
+    temp['artist_id'] = show.artist_id
+    temp['artist_name'] = show.artist.name
+    temp['artist_image_link'] = show.artist.image_link
+    temp['start_time'] = show.start_time
+
+    data.append(temp)
+    
   return render_template('pages/shows.html', shows=data)
 
 @app.route('/shows/create')
@@ -533,16 +513,41 @@ def create_shows():
 
 @app.route('/shows/create', methods=['POST'])
 def create_show_submission():
+  form = ShowForm(request.form)
+
+  if form.validate():
+    try:
+      new_show = Show(
+        artist_id=form.artist_id.data,
+        venue_id=form.venue_id.data,
+        start_time=form.start_time.data
+      )
+      db.session.add(new_show)
+      db.session.commit()
+      flash('Show was successfully listed!')
+    except Exception:
+      db.session.rollback()
+      print(sys.exc_info())
+      flash('An error occurred. Show could not be listed.')
+    finally:
+      db.session.close()
+  else:
+    print(form.errors)
+    flash('Show could not be listed. Please check form errors.')
+  
+  return render_template('pages/home.html')
+
+  
+  #return redirect(url_for('index'))
   # called to create new shows in the db, upon submitting new show listing form
   # TODO: insert form data as a new Show record in the db, instead
 
   # on successful db insert, flash success
-  flash('Show was successfully listed!')
+  #flash('Show was successfully listed!')
   # TODO: on unsuccessful db insert, flash an error instead.
   # e.g., flash('An error occurred. Show could not be listed.')
   # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-  return render_template('pages/home.html')
-
+  
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('errors/404.html'), 404
